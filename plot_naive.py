@@ -7,7 +7,7 @@ from architectures.fully_connected_models import silu, dsilu
 from tensorflow.keras.backend import relu, sigmoid
 
 
-def plot_val_accuracy(run='final-runs.pickle'):
+def plot_val_accuracy(run='results/final-runs.pickle'):
   with open(run, 'rb') as f:
     all_data = pickle.load(f)
 

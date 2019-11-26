@@ -9,3 +9,5 @@ results
 small-batch-results
 **/__pycache__
 *.pickle
+.idea
+reports

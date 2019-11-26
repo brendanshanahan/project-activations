@@ -17,9 +17,9 @@ import time
 class InceptionModule(Model):
   def __init__(self, **kwargs):
     super(InceptionModule, self).__init__()
+
     self.batch_norm = kwargs.pop('batch_norm', False)
     activation = kwargs.pop('activation', ReLU)
-
     tower0_conv1_filters = kwargs.pop('tower0_conv1', 64)
     tower1_conv1_filters = kwargs.pop('tower1_conv1', 64)
     tower1_conv2_filters = kwargs.pop('tower1_conv2', 64)
@@ -27,15 +27,18 @@ class InceptionModule(Model):
     tower2_conv1_filters = kwargs.pop('tower2_conv1', 64)
     tower2_conv2_filters = kwargs.pop('tower2_conv2', 64)
     tower3_conv1_filters = kwargs.pop('tower3_conv1', 64)
+    verbose = kwargs.get('verbose', False)
+    name = kwargs.get('name', 'NA')
 
-    print('--------------- Inception Layer ---------------')
-    print('tower 0, conv 1 filters: ', tower0_conv1_filters)
-    print('tower 1, conv 1 filters: ', tower1_conv1_filters)
-    print('tower 1, conv 2 filters: ', tower1_conv2_filters)
-    print('tower 1, conv 3 filters: ', tower1_conv3_filters)
-    print('tower 2, conv 1 filters: ', tower2_conv1_filters)
-    print('tower 2, conv 2 filters: ', tower2_conv2_filters)
-    print('tower 3, conv 1 filters: ', tower3_conv1_filters)
+    if verbose:
+      print('--------------- Inception Layer: %s ---------------' % name)
+      print('tower 0, conv 1 filters: ', tower0_conv1_filters)
+      print('tower 1, conv 1 filters: ', tower1_conv1_filters)
+      print('tower 1, conv 2 filters: ', tower1_conv2_filters)
+      print('tower 1, conv 3 filters: ', tower1_conv3_filters)
+      print('tower 2, conv 1 filters: ', tower2_conv1_filters)
+      print('tower 2, conv 2 filters: ', tower2_conv2_filters)
+      print('tower 3, conv 1 filters: ', tower3_conv1_filters)
 
     self.tower0_conv1 = Conv2D(filters=tower0_conv1_filters, kernel_size=(1, 1), padding='same')
     self.tower0_act1 = activation()
@@ -110,12 +113,7 @@ class InceptionModule(Model):
       x3 = self.tower3_bn1(x3)
     x3 = self.tower3_act1(x3)
 
-    # concatenate & flatten tower outputs
     out = concatenate([x0, x1, x2, x3], axis=3)
-    # out = cat
-    # flat = self.flat(cat)
-    # out = self.fc1(flat)
-
     return out
 
 
@@ -161,24 +159,57 @@ class ConvolutionalModel(Model):
 
     incep1_params = {'tower0_conv1': 64,
                      'tower1_conv1': 64,
-                     'tower1_conv2': 96,
+                     'tower1_conv2': 64,
                      'tower1_conv3': 96,
                      'tower2_conv1': 64,
-                     'tower2_conv2': 96,
+                     'tower2_conv2': 64,
                      'tower3_conv1': 96,
+                     'name': 'incep1',
+                     'verbose': True
                      }
 
-    incep2_params = {'tower0_conv1': 192,
+    incep2_params = {'tower0_conv1': 128,
                      'tower1_conv1': 128,
                      'tower1_conv2': 128,
                      'tower1_conv3': 192,
                      'tower2_conv1': 128,
                      'tower2_conv2': 192,
                      'tower3_conv1': 192,
+                     'name': 'incep2',
+                     'verbose': True
+                     }
+
+    incep3_params = {'tower0_conv1': 192,
+                     'tower1_conv1': 128,
+                     'tower1_conv2': 128,
+                     'tower1_conv3': 192,
+                     'tower2_conv1': 128,
+                     'tower2_conv2': 192,
+                     'tower3_conv1': 192,
+                     'name': 'incep3',
+                     'verbose': True
+                     }
+
+    incep4_params = {'tower0_conv1': 320,
+                     'tower1_conv1': 384,
+                     'tower1_conv2': 384,
+                     'tower1_conv3': 384,
+                     'tower2_conv1': 448,
+                     'tower2_conv2': 384,
+                     'tower3_conv1': 448,
+                     'name': 'incep4',
+                     'verbose': True
                      }
 
     self.incep1 = InceptionModule(**incep1_params)
     self.incep2 = InceptionModule(**incep2_params)
+
+    self.pool3 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')
+
+    self.incep3 = InceptionModule(**incep3_params)
+    self.incep4 = InceptionModule(**incep4_params)
+
+    self.pool4 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')
 
     self.flat = Flatten()
 
@@ -231,9 +262,18 @@ class ConvolutionalModel(Model):
 
     x = self.pool2(x)
 
-    # inception modules
+    # inception modules (1st block)
     x = self.incep1(x)
     x = self.incep2(x)
+
+    # pool
+    x = self.pool3(x)
+
+    # inception modules (2nd block)
+    x = self.incep3(x)
+    x = self.incep4(x)
+
+    x = self.pool4(x)
 
     x = self.flat(x)
 
@@ -278,6 +318,7 @@ if __name__ == '__main__':
     x_train, y_train = x_train[:train_lim], y_train[:train_lim]
     x_test, y_test = x_test[:test_lim], y_test[:test_lim]
 
+  print('----------------- running model -----------------')
   print('x_train shape: ', x_train.shape)
   print('x_test shape: ', x_test.shape)
   print('----------------------------------------')
