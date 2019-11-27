@@ -5,8 +5,8 @@ import os
 import sys
 
 USE_PARTIAL_DATA = True
-TRAIN_LIM = 1000
-TEST_LIM = 100
+TRAIN_LIM = 5000
+TEST_LIM = 500
 VERBOSE = True
 PARAMS = {'tower0_conv1': 192,
           'tower1_conv1': 128,
@@ -88,13 +88,17 @@ if __name__ == '__main__':
     else:
       print('Training partial model')
       full_model = 'partial'
-      model = InceptionLayerV2(batch_norm=USE_BATCH_NORM, **PARAMS)
-      # model = InceptionModuleV2(batch_norm=USE_BATCH_NORM, **PARAMS)
+      model = InceptionLayerV2(num_classes=NUM_CLASSES,
+                               batch_norm=USE_BATCH_NORM,
+                               activation=activation,
+                               **PARAMS)
   except IndexError:
     print('Training partial model')
     full_model = 'partial'
-    model = InceptionLayerV2(batch_norm=USE_BATCH_NORM, **PARAMS)
-    # model = InceptionModuleV2batch_norm=USE_BATCH_NORM, **PARAMS)
+    model = InceptionLayerV2(num_classes=NUM_CLASSES,
+                             batch_norm=USE_BATCH_NORM,
+                             activation=activation,
+                             **PARAMS)
 
   x_train, x_test = x_train / 255.0, x_test / 255.0
 
