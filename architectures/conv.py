@@ -80,44 +80,44 @@ class InceptionModule(Model):
     # tower 0 feed-forward
     x0 = self.tower0_conv1(x)
     if self.batch_norm:
-      x0 = self.tower0_bn1(x0)
+      x0 = self.tower0_bn1(x0, training=training)
     x0 = self.tower0_act1(x0)
 
     # tower one feed-forward
     x1 = self.tower1_conv1(x)
     if self.batch_norm:
-      x1 = self.tower1_bn1(x1)
+      x1 = self.tower1_bn1(x1, training=training)
     x1 = self.tower1_act1(x1)
     x1 = self.tower1_conv2(x1)
     if self.batch_norm:
-      x1 = self.tower1_bn2(x1)
+      x1 = self.tower1_bn2(x1, training=training)
     x1 = self.tower1_act2(x1)
     x1 = self.tower1_conv3(x1)
     if self.batch_norm:
-      x1 = self.tower1_bn3(x1)
+      x1 = self.tower1_bn3(x1, training=training)
     x1 = self.tower1_act3(x1)
 
     # tower two feed-forward
     x2 = self.tower2_conv1(x)
     if self.batch_norm:
-      x2 = self.tower2_bn1(x2)
+      x2 = self.tower2_bn1(x2, training=training)
     x2 = self.tower2_act1(x2)
     x2 = self.tower2_conv2(x2)
     if self.batch_norm:
-      x2 = self.tower2_bn2(x2)
+      x2 = self.tower2_bn2(x2, training=training)
     x2 = self.tower2_act2(x2)
 
     # tower three feed-forward
     x3 = self.tower3_pool1(x)
     x3 = self.tower3_conv1(x3)
     if self.batch_norm:
-      x3 = self.tower3_bn1(x3)
+      x3 = self.tower3_bn1(x3, training=training)
     x3 = self.tower3_act1(x3)
 
-    print('x0 shape: ', x0.shape)
-    print('x1 shape: ', x1.shape)
-    print('x2 shape: ', x2.shape)
-    print('x3 shape: ', x3.shape)
+    # print('x0 shape: ', x0.shape)
+    # print('x1 shape: ', x1.shape)
+    # print('x2 shape: ', x2.shape)
+    # print('x3 shape: ', x3.shape)
 
     out = concatenate([x0, x1, x2, x3], axis=3)
     # out = self.flat(out)
@@ -206,54 +206,54 @@ class InceptionModuleV2(Model):
     # tower 0 feed-forward
     x0 = self.tower0_conv1(x)
     if self.batch_norm:
-      x0 = self.tower0_bn1(x0)
+      x0 = self.tower0_bn1(x0, training=training)
     x0 = self.tower0_act1(x0)
 
     # tower one feed-forward
     x1 = self.tower1_conv1(x)
     if self.batch_norm:
-      x1 = self.tower1_bn1(x1)
+      x1 = self.tower1_bn1(x1, training=training)
     x1 = self.tower1_act1(x1)
     # 2
     x1 = self.tower1_conv2(x1)
     if self.batch_norm:
-      x1 = self.tower1_bn2(x1)
+      x1 = self.tower1_bn2(x1, training=training)
     x1 = self.tower1_act2(x1)
     # 3
     x1 = self.tower1_conv3(x1)
     if self.batch_norm:
-      x1 = self.tower1_bn3(x1)
+      x1 = self.tower1_bn3(x1, training=training)
     x1 = self.tower1_act3(x1)
     # 4
     x1 = self.tower1_conv4(x1)
     if self.batch_norm:
-      x1 = self.tower1_bn4(x1)
+      x1 = self.tower1_bn4(x1, training=training)
     x1 = self.tower1_act4(x1)
     # 5
     x1 = self.tower1_conv5(x1)
     if self.batch_norm:
-      x1 = self.tower1_bn5(x1)
+      x1 = self.tower1_bn5(x1, training=training)
     x1 = self.tower1_act5(x1)
 
     # tower two feed-forward
     x2 = self.tower2_conv1(x)
     if self.batch_norm:
-      x2 = self.tower2_bn1(x2)
+      x2 = self.tower2_bn1(x2, training=training)
     x2 = self.tower2_act1(x2)
     x2 = self.tower2_conv2(x2)
     if self.batch_norm:
-      x2 = self.tower2_bn2(x2)
+      x2 = self.tower2_bn2(x2, training=training)
     x2 = self.tower2_act2(x2)
     x2 = self.tower2_conv3(x2)
     if self.batch_norm:
-      x2 = self.tower2_bn3(x2)
+      x2 = self.tower2_bn3(x2, training=training)
     x2 = self.tower2_act3(x2)
 
     # tower three feed-forward
     x3 = self.tower3_pool1(x)
     x3 = self.tower3_conv1(x3)
     if self.batch_norm:
-      x3 = self.tower3_bn1(x3)
+      x3 = self.tower3_bn1(x3, training=training)
     x3 = self.tower3_act1(x3)
 
     out = concatenate([x0, x1, x2, x3], axis=3)
@@ -273,22 +273,7 @@ class InceptionLayerV2(Model):
     self.conv1 = Conv2D(filters=192, kernel_size=(1, 1), padding='same')
     self.act1 = activation()
 
-    incep1_params = {'tower0_conv1': 320,
-                     'tower1_conv1': 384,
-                     'tower1_conv2': 384,
-                     'tower1_conv3': 384,
-                     'tower1_conv4': 384,
-                     'tower1_conv5': 384,
-                     'tower2_conv1': 448,
-                     'tower2_conv2': 384,
-                     'tower2_conv3': 384,
-                     'tower3_conv1': 448,
-                     'name': 'incep_v2',
-                     }
-
-    self.incep1 = InceptionModuleV2(**incep1_params)
-    # self.incep1 = InceptionModuleV2(**kwargs)
-    # self.incep1 = InceptionModuleV2()
+    self.incep1 = InceptionModuleV2(**kwargs)
 
     self.conv2 = Conv2D(filters=192, kernel_size=(1, 1), padding='same')
     self.act2 = activation()
@@ -306,12 +291,12 @@ class InceptionLayerV2(Model):
     # feed-forward layers
     x = self.conv1(x)
     if self.batch_norm:
-      x = self.bn1(x)
+      x = self.bn1(x, training=training)
     x = self.act1(x)
     x = self.incep1(x)
     x = self.conv2(x)
     if self.batch_norm:
-      x = self.bn2(x)
+      x = self.bn2(x, training=training)
     x = self.act2(x)
     x = self.flat(x)
     scores = self.fc(x)
@@ -431,7 +416,6 @@ class ConvolutionalModel(Model):
       self.bn3 = BatchNormalization()
       self.bn4 = BatchNormalization()
       self.bn5 = BatchNormalization()
-      # self.bn6 = BatchNormalization()
 
   def call(self, x, **kwargs):
     training = kwargs.pop('training', False)

@@ -29,6 +29,7 @@ NUM_CLASSES = 10
 
 if __name__ == '__main__':
   args = sys.argv[1:]
+
   try:
     dataset = args[0]
     if dataset == 'cifar10':
@@ -47,7 +48,6 @@ if __name__ == '__main__':
 
   try:
     activation_str = args[1]
-
     if activation_str == 'relu':
       activation = ReLU
     elif activation_str == 'silu':
