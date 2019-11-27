@@ -423,60 +423,48 @@ class ConvolutionalModel(Model):
     # feed-forward layers
     x = self.conv1(x)
     if self.batch_norm:
-      x = self.bn1(x)
+      x = self.bn1(x, training=training)
     x = self.act1(x)
 
     x = self.conv2(x)
     if self.batch_norm:
-      x = self.bn2(x)
+      x = self.bn2(x, training=training)
     x = self.act2(x)
 
     x = self.pool1(x)
 
     x = self.conv3(x)
     if self.batch_norm:
-      x = self.bn3(x)
+      x = self.bn3(x, training=training)
     x = self.act3(x)
 
     x = self.conv4(x)
     if self.batch_norm:
-      x = self.bn4(x)
+      x = self.bn4(x, training=training)
     x = self.act4(x)
 
     x = self.pool2(x)
 
     # inception modules (1st block)
-    x = self.incep1(x)
-    x = self.incep2(x)
+    x = self.incep1(x, training=training)
+    x = self.incep2(x, training=training)
 
     # pool
     x = self.pool3(x)
 
     # inception modules (2nd block)
-    x = self.incep3(x)
-    x = self.incep4(x)
+    x = self.incep3(x, training=training)
+    x = self.incep4(x, training=training)
 
     x = self.pool4(x)
 
     x = self.conv5(x)
     if self.batch_norm:
-      x = self.bn5(x)
+      x = self.bn5(x, training=training)
     x = self.act5(x)
 
     x = self.flat(x)
-
-    # x = self.fc1(x)
-    # if self.batch_norm:
-    #   x = self.bn6(x)
-    # x = self.act6(x)
-    #
-    # x = self.fc2(x)
-    # if self.batch_norm:
-    #   x = self.bn7(x)
-    # x = self.act7(x)
-
     scores = self.fc3(x)
-
     return scores
 
 
