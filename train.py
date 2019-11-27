@@ -22,7 +22,7 @@ PARAMS = {'tower0_conv1': 192,
           'name': 'incepv2',
           'verbose': VERBOSE
           }
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 NUM_EPOCHS = 1
 USE_BATCH_NORM = False
 NUM_CLASSES = 10
@@ -61,40 +61,32 @@ if __name__ == '__main__':
     print('No activation function provided; using ReLU')
     activation_str = 'relu'
     activation = ReLU
-  print('Using activation function: ', activation_str)
 
   try:
     batch_norm = args[2]
-
     if batch_norm == 'bn':
-      print('Using batch normalization')
       USE_BATCH_NORM = True
     else:
-      print('No batch normalization')
       batch_norm = 'no-bn'
   except IndexError:
-    print('No batch normalization')
     batch_norm = 'no-bn'
 
   try:
     full_model = args[3]
 
     if full_model == 'full':
-      print('Training full convolutional model')
       USE_PARTIAL_DATA = False
       model = ConvolutionalModel(num_classes=NUM_CLASSES,
                                  activation=activation,
                                  batch_norm=USE_BATCH_NORM,
                                  verbose=VERBOSE)
     else:
-      print('Training partial model')
       full_model = 'partial'
       model = InceptionLayerV2(num_classes=NUM_CLASSES,
                                batch_norm=USE_BATCH_NORM,
                                activation=activation,
                                **PARAMS)
   except IndexError:
-    print('Training partial model')
     full_model = 'partial'
     model = InceptionLayerV2(num_classes=NUM_CLASSES,
                              batch_norm=USE_BATCH_NORM,
@@ -104,9 +96,18 @@ if __name__ == '__main__':
   try:
     epochs = int(args[4])
     NUM_EPOCHS = epochs
-    print('training for %d epochs' % NUM_EPOCHS)
   except IndexError:
-    print('training for %d epochs' % NUM_EPOCHS)
+    pass
+
+  #
+  if VERBOSE:
+    print('-------------------------------------------')
+    print('Dataset: ', dataset)
+    print('Num classes: ', NUM_CLASSES)
+    print('Using activation function: ', activation_str)
+    print('Use batch norm: ', str(USE_BATCH_NORM))
+    print('Training %s model for %d epochs' % (full_model, NUM_EPOCHS))
+    print('-------------------------------------------')
 
   x_train, x_test = x_train / 255.0, x_test / 255.0
 
@@ -118,10 +119,13 @@ if __name__ == '__main__':
   # tensorboard callback
   path = os.path.dirname(os.path.abspath(__file__))
   run_time = time.strftime('%d%m%Y-%H:%M:%S')
-  log_dir = path + '/logs/' + dataset + '-' + run_time
+  log_dir = path + '/.logs/' + dataset + '-' + run_time
   print('Tensorboard log directory: ', log_dir)
 
-  callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+  batch_callback = BatchHistory()
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                        histogram_freq=1,
+                                                        update_freq='batch')
   loss_function = tf.keras.losses.SparseCategoricalCrossentropy()
   optimizer = tf.keras.optimizers.Adam()
   metric = tf.keras.metrics.SparseCategoricalAccuracy()
@@ -133,7 +137,8 @@ if __name__ == '__main__':
                       batch_size=BATCH_SIZE,
                       epochs=NUM_EPOCHS,
                       validation_data=(x_test, y_test),
-                      callbacks=[callback]
+                      callbacks=[tensorboard_callback]
+                      # callbacks=[batch_callback, tensorboard_callback]
                       )
 
   elapsed_time = time.time() - start_time
@@ -146,10 +151,12 @@ if __name__ == '__main__':
   print('elapsed time: %dh, %dm, %ds' % (elapsed_hrs, elapsed_min, elapsed_sec))
   print('--------------- history ---------------')
   print(history.history)
+  print('------------ batch history ------------')
+  print(history)
 
-  filename = path + '/results/' + dataset + '-' + activation_str \
+  filename = path + '/.results/' + dataset + '-' + activation_str \
              + '-' + run_time + '-' + full_model + '-' + batch_norm \
-             + '-' + str(NUM_EPOCHS) + '-epochs-' + '.pickle'
+             + '-' + str(NUM_EPOCHS) + '-epochs' + '.pickle'
   print('Saving training resluts to: ', filename)
   with open(filename, 'wb') as f:
     pickle.dump(history.history, f, pickle.HIGHEST_PROTOCOL)

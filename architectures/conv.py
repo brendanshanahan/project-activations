@@ -8,9 +8,42 @@ from tensorflow.keras.layers import MaxPooling2D
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.layers import concatenate
 from tensorflow.keras.layers import ReLU
+from tensorflow.keras.layers import Dropout
 import time
 import pickle
 import os
+
+
+class BatchHistory(tf.keras.callbacks.Callback):
+  """
+  log history at each batch
+  """
+
+  def on_train_begin(self, logs=None):
+    self.epoch = []
+    self.history = {}
+    print('model metrics: ', self.params['metrics'])
+
+  def on_epoch_begin(self, epoch, logs=None):
+    self.batch_logs = {metric: [] for metric in self.params['metrics']}
+
+  def on_epoch_end(self, epoch, logs=None):
+    print(' | epoch end batch logs: ', self.batch_logs)
+    logs = logs or {}
+    self.epoch.append(epoch)
+    for k in self.params['metrics']:
+      if k in logs:
+        self.history.setdefault(k, []).append(self.batch_logs[k].append(logs[k]))
+        print(' | %s history: %s' % (k, self.history[k]))
+
+  def on_batch_begin(self, batch, logs=None):
+    self.log_values = []
+
+  def on_batch_end(self, batch, logs=None):
+    logs = logs or {}
+    for k in self.params['metrics']:
+      if k in logs:
+        self.batch_logs[k].append(logs[k])
 
 
 class InceptionModule(Model):
@@ -62,6 +95,7 @@ class InceptionModule(Model):
       self.tower0_bn1 = BatchNormalization()
       self.tower1_bn1 = BatchNormalization()
       self.tower1_bn2 = BatchNormalization()
+      self.tower1_bn3 = BatchNormalization()
       self.tower2_bn1 = BatchNormalization()
       self.tower2_bn2 = BatchNormalization()
       self.tower3_bn1 = BatchNormalization()
@@ -296,6 +330,7 @@ class ConvolutionalModel(Model):
     conv3_filters = kwargs.get('conv1_filters', 128)
     conv4_filters = kwargs.get('conv2_filters', 192)
     conv5_filters = kwargs.get('conv1_filters', 192)
+    dropout_rate = kwargs.get('dropout_rate', 0.5)
 
     # initialize layers
     self.conv1 = Conv2D(filters=conv1_filters, kernel_size=(3, 3), padding='same')
@@ -304,65 +339,15 @@ class ConvolutionalModel(Model):
     self.conv2 = Conv2D(filters=conv2_filters, kernel_size=(3, 3), padding='same')
     self.act2 = activation()
 
+    self.pool1 = MaxPooling2D((3, 3), padding='same')
+
     self.conv3 = Conv2D(filters=conv3_filters, kernel_size=(3, 3), padding='same')
     self.act3 = activation()
-
-    self.pool1 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')
 
     self.conv4 = Conv2D(filters=conv4_filters, kernel_size=(1, 1), padding='same')
     self.act4 = activation()
 
-    self.pool2 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')
-
-    # incep1_params = {'tower0_conv1': 64,
-    #                  'tower1_conv1': 64,
-    #                  'tower1_conv2': 64,
-    #                  'tower1_conv3': 96,
-    #                  'tower2_conv1': 64,
-    #                  'tower2_conv2': 64,
-    #                  'tower3_conv1': 96,
-    #                  'name': 'incep1_v1',
-    #                  'verbose': verbose
-    #                  }
-    #
-    # incep2_params = {'tower0_conv1': 128,
-    #                  'tower1_conv1': 128,
-    #                  'tower1_conv2': 128,
-    #                  'tower1_conv3': 192,
-    #                  'tower2_conv1': 128,
-    #                  'tower2_conv2': 192,
-    #                  'tower3_conv1': 192,
-    #                  'name': 'incep2_v1',
-    #                  'verbose': verbose
-    #                  }
-    #
-    # incep3_params = {'tower0_conv1': 192,
-    #                  'tower1_conv1': 128,
-    #                  'tower1_conv2': 128,
-    #                  'tower1_conv3': 128,
-    #                  'tower1_conv4': 192,
-    #                  'tower1_conv5': 192,
-    #                  'tower2_conv1': 128,
-    #                  'tower2_conv2': 192,
-    #                  'tower2_conv3': 192,
-    #                  'tower3_conv1': 192,
-    #                  'name': 'incep3_v2',
-    #                  'verbose': verbose
-    #                  }
-    #
-    # incep4_params = {'tower0_conv1': 320,
-    #                  'tower1_conv1': 384,
-    #                  'tower1_conv2': 384,
-    #                  'tower1_conv3': 384,
-    #                  'tower1_conv4': 384,
-    #                  'tower1_conv5': 384,
-    #                  'tower2_conv1': 448,
-    #                  'tower2_conv2': 384,
-    #                  'tower2_conv3': 384,
-    #                  'tower3_conv1': 448,
-    #                  'name': 'incep4_v2',
-    #                  'verbose': verbose
-    #                  }
+    self.pool2 = MaxPooling2D((3, 3), padding='same')
 
     incep1_params = {'tower0_conv1': 64,
                      'tower1_conv1': 96,
@@ -372,6 +357,8 @@ class ConvolutionalModel(Model):
                      'tower2_conv2': 32,
                      'tower3_conv1': 32,
                      'name': 'incep1_v1',
+                     'batch_norm': self.batch_norm,
+                     'activation': activation,
                      'verbose': verbose
                      }
 
@@ -383,6 +370,8 @@ class ConvolutionalModel(Model):
                      'tower2_conv2': 96,
                      'tower3_conv1': 64,
                      'name': 'incep2_v1',
+                     'batch_norm': self.batch_norm,
+                     'activation': activation,
                      'verbose': verbose
                      }
 
@@ -397,6 +386,8 @@ class ConvolutionalModel(Model):
                      'tower2_conv3': 48,
                      'tower3_conv1': 64,
                      'name': 'incep3_v2',
+                     'batch_norm': self.batch_norm,
+                     'activation': activation,
                      'verbose': verbose
                      }
 
@@ -411,18 +402,22 @@ class ConvolutionalModel(Model):
                      'tower2_conv3': 128,
                      'tower3_conv1': 128,
                      'name': 'incep4_v2',
+                     'batch_norm': self.batch_norm,
+                     'activation': activation,
                      'verbose': verbose
                      }
 
     self.incep1 = InceptionModule(**incep1_params)
     self.incep2 = InceptionModule(**incep2_params)
 
-    self.pool3 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')
+    self.pool3 = MaxPooling2D((3, 3), padding='same')
 
     self.incep3 = InceptionModuleV2(**incep3_params)
     self.incep4 = InceptionModuleV2(**incep4_params)
 
-    self.pool4 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')
+    self.pool4 = MaxPooling2D((3, 3), padding='same')
+
+    self.drop = Dropout(dropout_rate)
 
     self.conv5 = Conv2D(filters=conv5_filters, kernel_size=(1, 1), padding='same')
     self.act5 = activation()
@@ -437,8 +432,7 @@ class ConvolutionalModel(Model):
       self.bn4 = BatchNormalization()
       self.bn5 = BatchNormalization()
 
-  def call(self, x, **kwargs):
-    training = kwargs.pop('training', False)
+  def call(self, x, training=False, **kwargs):
 
     # feed-forward layers
     x = self.conv1(x)
@@ -478,6 +472,7 @@ class ConvolutionalModel(Model):
 
     x = self.pool4(x)
 
+    x = self.drop(x, training=training)
     x = self.conv5(x)
     if self.batch_norm:
       x = self.bn5(x, training=training)

@@ -2,12 +2,14 @@ cvpr2018AuthorKit
 env
 milestone
 proposal
-logs
 final-run
 full-batches
-results
 small-batch-results
 **/__pycache__
 *.pickle
 .idea
 reports
+logs/*
+.logs/*
+results/*
+.results/*
