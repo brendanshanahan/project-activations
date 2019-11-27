@@ -7,9 +7,13 @@ import pickle
 import math
 
 
-class NBatchLogger(tf.keras.callbacks.TensorBoard):
+class BatchLogger(tf.keras.callbacks.TensorBoard):
+  """
+  log batch statistics to tensorboard in the middle of an epoch, rather
+  than only at the end
+  """
   def __init__(self, log_every=1, **kwargs):
-    super(NBatchLogger, self).__init__(**kwargs)
+    super(BatchLogger, self).__init__(**kwargs)
     self.log_every = log_every
     self.counter = 0
 
