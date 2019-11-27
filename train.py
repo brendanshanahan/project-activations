@@ -3,8 +3,9 @@ from architectures.fully_connected_models import *
 from tensorflow.keras.layers import ReLU
 import os
 import sys
+import tensorflow as tf
 
-USE_PARTIAL_DATA = False
+USE_PARTIAL_DATA = True
 TRAIN_LIM = 5000
 TEST_LIM = 500
 VERBOSE = True
@@ -99,14 +100,14 @@ if __name__ == '__main__':
                              batch_norm=USE_BATCH_NORM,
                              activation=activation,
                              **PARAMS)
-  
+
   try:
     epochs = int(args[4])
     NUM_EPOCHS = epochs
     print('training for %d epochs' % NUM_EPOCHS)
   except IndexError:
     print('training for %d epochs' % NUM_EPOCHS)
-    
+
   x_train, x_test = x_train / 255.0, x_test / 255.0
 
   if USE_PARTIAL_DATA:
@@ -147,7 +148,8 @@ if __name__ == '__main__':
   print(history.history)
 
   filename = path + '/results/' + dataset + '-' + activation_str \
-             + '-' + run_time + '-' + full_model + '-' + batch_norm + '.pickle'
+             + '-' + run_time + '-' + full_model + '-' + batch_norm \
+             + '-' + str(NUM_EPOCHS) + '-epochs-' + '.pickle'
   print('Saving training resluts to: ', filename)
   with open(filename, 'wb') as f:
     pickle.dump(history.history, f, pickle.HIGHEST_PROTOCOL)

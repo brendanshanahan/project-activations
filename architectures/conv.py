@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Layer
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import BatchNormalization
@@ -9,10 +8,9 @@ from tensorflow.keras.layers import MaxPooling2D
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.layers import concatenate
 from tensorflow.keras.layers import ReLU
-# from fully_connected_models import SiLULayer, DSiLULayer
-import math
 import time
 import pickle
+import os
 
 
 class InceptionModule(Model):
@@ -57,12 +55,8 @@ class InceptionModule(Model):
     self.tower2_act2 = activation()
 
     self.tower3_pool1 = AveragePooling2D((3, 3), strides=(1, 1), padding='same')
-    # self.tower3_pool1 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')
     self.tower3_conv1 = Conv2D(filters=tower3_conv1_filters, kernel_size=(1, 1), padding='same')
     self.tower3_act1 = activation()
-
-    # self.flat = Flatten()
-    # self.fc1 = Dense(10, activation='softmax', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2.0))
 
     if self.batch_norm:
       self.tower0_bn1 = BatchNormalization()
@@ -74,8 +68,6 @@ class InceptionModule(Model):
 
   def call(self, x, **kwargs):
     training = kwargs.get('training', False)
-
-    # print('x shape: ', x.shape)
 
     # tower 0 feed-forward
     x0 = self.tower0_conv1(x)
@@ -114,14 +106,7 @@ class InceptionModule(Model):
       x3 = self.tower3_bn1(x3, training=training)
     x3 = self.tower3_act1(x3)
 
-    # print('x0 shape: ', x0.shape)
-    # print('x1 shape: ', x1.shape)
-    # print('x2 shape: ', x2.shape)
-    # print('x3 shape: ', x3.shape)
-
     out = concatenate([x0, x1, x2, x3], axis=3)
-    # out = self.flat(out)
-    # out = self.fc1(out)
     return out
 
 
@@ -179,12 +164,8 @@ class InceptionModuleV2(Model):
     self.tower2_act3 = activation()
 
     self.tower3_pool1 = AveragePooling2D((3, 3), strides=(1, 1), padding='same')
-    # self.tower3_pool1 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')
     self.tower3_conv1 = Conv2D(filters=tower3_conv1_filters, kernel_size=(1, 1), padding='same')
     self.tower3_act1 = activation()
-
-    # self.flat = Flatten()
-    # self.fc1 = Dense(10, activation='softmax', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2.0))
 
     if self.batch_norm:
       self.tower0_bn1 = BatchNormalization()
@@ -200,8 +181,6 @@ class InceptionModuleV2(Model):
 
   def call(self, x, **kwargs):
     training = kwargs.get('training', False)
-
-    # print('x shape: ', x.shape)
 
     # tower 0 feed-forward
     x0 = self.tower0_conv1(x)
@@ -257,8 +236,6 @@ class InceptionModuleV2(Model):
     x3 = self.tower3_act1(x3)
 
     out = concatenate([x0, x1, x2, x3], axis=3)
-    # out = self.flat(out)
-    # out = self.fc1(out)
     return out
 
 
@@ -293,7 +270,7 @@ class InceptionLayerV2(Model):
     if self.batch_norm:
       x = self.bn1(x, training=training)
     x = self.act1(x)
-    x = self.incep1(x)
+    x = self.incep1(x, training=training)
     x = self.conv2(x)
     if self.batch_norm:
       x = self.bn2(x, training=training)
@@ -337,52 +314,102 @@ class ConvolutionalModel(Model):
 
     self.pool2 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')
 
+    # incep1_params = {'tower0_conv1': 64,
+    #                  'tower1_conv1': 64,
+    #                  'tower1_conv2': 64,
+    #                  'tower1_conv3': 96,
+    #                  'tower2_conv1': 64,
+    #                  'tower2_conv2': 64,
+    #                  'tower3_conv1': 96,
+    #                  'name': 'incep1_v1',
+    #                  'verbose': verbose
+    #                  }
+    #
+    # incep2_params = {'tower0_conv1': 128,
+    #                  'tower1_conv1': 128,
+    #                  'tower1_conv2': 128,
+    #                  'tower1_conv3': 192,
+    #                  'tower2_conv1': 128,
+    #                  'tower2_conv2': 192,
+    #                  'tower3_conv1': 192,
+    #                  'name': 'incep2_v1',
+    #                  'verbose': verbose
+    #                  }
+    #
+    # incep3_params = {'tower0_conv1': 192,
+    #                  'tower1_conv1': 128,
+    #                  'tower1_conv2': 128,
+    #                  'tower1_conv3': 128,
+    #                  'tower1_conv4': 192,
+    #                  'tower1_conv5': 192,
+    #                  'tower2_conv1': 128,
+    #                  'tower2_conv2': 192,
+    #                  'tower2_conv3': 192,
+    #                  'tower3_conv1': 192,
+    #                  'name': 'incep3_v2',
+    #                  'verbose': verbose
+    #                  }
+    #
+    # incep4_params = {'tower0_conv1': 320,
+    #                  'tower1_conv1': 384,
+    #                  'tower1_conv2': 384,
+    #                  'tower1_conv3': 384,
+    #                  'tower1_conv4': 384,
+    #                  'tower1_conv5': 384,
+    #                  'tower2_conv1': 448,
+    #                  'tower2_conv2': 384,
+    #                  'tower2_conv3': 384,
+    #                  'tower3_conv1': 448,
+    #                  'name': 'incep4_v2',
+    #                  'verbose': verbose
+    #                  }
+
     incep1_params = {'tower0_conv1': 64,
-                     'tower1_conv1': 64,
-                     'tower1_conv2': 64,
-                     'tower1_conv3': 96,
-                     'tower2_conv1': 64,
-                     'tower2_conv2': 64,
-                     'tower3_conv1': 96,
+                     'tower1_conv1': 96,
+                     'tower1_conv2': 128,
+                     'tower1_conv3': 128,
+                     'tower2_conv1': 616,
+                     'tower2_conv2': 32,
+                     'tower3_conv1': 32,
                      'name': 'incep1_v1',
                      'verbose': verbose
                      }
 
     incep2_params = {'tower0_conv1': 128,
                      'tower1_conv1': 128,
-                     'tower1_conv2': 128,
+                     'tower1_conv2': 192,
                      'tower1_conv3': 192,
-                     'tower2_conv1': 128,
-                     'tower2_conv2': 192,
-                     'tower3_conv1': 192,
+                     'tower2_conv1': 32,
+                     'tower2_conv2': 96,
+                     'tower3_conv1': 64,
                      'name': 'incep2_v1',
                      'verbose': verbose
                      }
 
     incep3_params = {'tower0_conv1': 192,
-                     'tower1_conv1': 128,
+                     'tower1_conv1': 96,
                      'tower1_conv2': 128,
                      'tower1_conv3': 128,
-                     'tower1_conv4': 192,
-                     'tower1_conv5': 192,
-                     'tower2_conv1': 128,
-                     'tower2_conv2': 192,
-                     'tower2_conv3': 192,
-                     'tower3_conv1': 192,
+                     'tower1_conv4': 128,
+                     'tower1_conv5': 128,
+                     'tower2_conv1': 16,
+                     'tower2_conv2': 48,
+                     'tower2_conv3': 48,
+                     'tower3_conv1': 64,
                      'name': 'incep3_v2',
                      'verbose': verbose
                      }
 
-    incep4_params = {'tower0_conv1': 320,
-                     'tower1_conv1': 384,
-                     'tower1_conv2': 384,
-                     'tower1_conv3': 384,
-                     'tower1_conv4': 384,
-                     'tower1_conv5': 384,
-                     'tower2_conv1': 448,
-                     'tower2_conv2': 384,
-                     'tower2_conv3': 384,
-                     'tower3_conv1': 448,
+    incep4_params = {'tower0_conv1': 256,
+                     'tower1_conv1': 160,
+                     'tower1_conv2': 320,
+                     'tower1_conv3': 320,
+                     'tower1_conv4': 320,
+                     'tower1_conv5': 320,
+                     'tower2_conv1': 48,
+                     'tower2_conv2': 128,
+                     'tower2_conv3': 128,
+                     'tower3_conv1': 128,
                      'name': 'incep4_v2',
                      'verbose': verbose
                      }
@@ -401,13 +428,6 @@ class ConvolutionalModel(Model):
     self.act5 = activation()
 
     self.flat = Flatten()
-
-    # self.fc1 = Dense(fc1_size, kernel_initializer=initializer)
-    # self.act6 = activation()
-    #
-    # self.fc2 = Dense(fc2_size, kernel_initializer=initializer)
-    # self.act7 = activation()
-
     self.fc3 = Dense(num_classes, activation='softmax', kernel_initializer=initializer)
 
     if self.batch_norm:
@@ -470,71 +490,9 @@ class ConvolutionalModel(Model):
 
 if __name__ == '__main__':
 
-  dataset = 'cifar10'
-  use_partial_data = True
-
-  train_lim = 1000
-  test_lim = 100
-
   (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
   x_train, x_test = x_train / 255.0, x_test / 255.0
 
-  # if dataset == 'cifar100':
-  #   print('########## training on CIFAR-100 ##########')
-  #   (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
-  #   x_train, x_test = x_train / 255.0, x_test / 255.0
-  #
-  #   model = ConvolutionalModel(num_classes=100, verbose=True)
-  #
-  # else:
-  #   print('########## training on CIFAR-10 ##########')
-  #   (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-  #   x_train, x_test = x_train / 255.0, x_test / 255.0
-  #
-  #   model = ConvolutionalModel(num_classes=10, verbose=True)
-
-  if use_partial_data:
-    x_train, y_train = x_train[:train_lim], y_train[:train_lim]
-    x_test, y_test = x_test[:test_lim], y_test[:test_lim]
-
-  # use half of the test set as the validaiton set
-  # x_val, y_val = x_test[:test_lim], y_test[:test_lim]
-  # x_test, y_test = x_test[test_lim:], y_test[test_lim:]
-
-  print('----------------- running model -----------------')
-  print('x_train shape: ', x_train.shape)
-  print('x_test shape: ', x_test.shape)
-  print('----------------------------------------')
-  print('y_train shape: ', y_train.shape)
-  print('y_test shape: ', y_test.shape)
-  print('----------------------------------------')
-
-  # params = {'tower0_conv1': 192,
-  #           'tower1_conv1': 128,
-  #           'tower1_conv2': 128,
-  #           'tower1_conv3': 192,
-  #           'tower2_conv1': 128,
-  #           'tower2_conv2': 192,
-  #           'tower3_conv1': 192,
-  #           'name': 'incep3',
-  #           'verbose': False
-  #           }
-
-  params = {'tower0_conv1': 192,
-            'tower1_conv1': 128,
-            'tower1_conv2': 128,
-            'tower1_conv3': 128,
-            'tower1_conv4': 192,
-            'tower1_conv5': 192,
-            'tower2_conv1': 128,
-            'tower2_conv2': 192,
-            'tower2_conv3': 192,
-            'tower3_conv1': 192,
-            'name': 'incepv2',
-            'verbose': False
-            }
-
-  # model = InceptionModuleV2(**params)
   model = ConvolutionalModel(num_classes=10, verbose=True)
 
   loss_function = tf.keras.losses.SparseCategoricalCrossentropy()
@@ -542,8 +500,9 @@ if __name__ == '__main__':
   metric = tf.keras.metrics.SparseCategoricalAccuracy()
 
   # tensorboard callback
+  path = os.path.dirname(os.path.abspath(__file__))
   run_time = time.strftime('%d%m%Y-%H:%M:%S')
-  log_dir = '/home/brendan/nn/project/logs/' + dataset + '-' + run_time
+  log_dir = path + '/logs/cifar10-' + run_time
   callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
   model.compile(optimizer=optimizer, loss=loss_function, metrics=[metric])
@@ -570,7 +529,7 @@ if __name__ == '__main__':
   print('--------------- history ---------------')
   print(history.history)
 
-  filename = dataset + '-' + run_time + '-' + 'mini.pickle'
+  filename = path + '/results/cifar10-' + run_time + '.pickle'
   with open(filename, 'wb') as f:
     pickle.dump(history.history, f, pickle.HIGHEST_PROTOCOL)
 
