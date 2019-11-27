@@ -4,7 +4,7 @@ from tensorflow.keras.layers import ReLU
 import os
 import sys
 
-USE_PARTIAL_DATA = True
+USE_PARTIAL_DATA = False
 TRAIN_LIM = 5000
 TEST_LIM = 500
 VERBOSE = True
@@ -99,7 +99,14 @@ if __name__ == '__main__':
                              batch_norm=USE_BATCH_NORM,
                              activation=activation,
                              **PARAMS)
-
+  
+  try:
+    epochs = int(args[4])
+    NUM_EPOCHS = epochs
+    print('training for %d epochs' % NUM_EPOCHS)
+  except IndexError:
+    print('training for %d epochs' % NUM_EPOCHS)
+    
   x_train, x_test = x_train / 255.0, x_test / 255.0
 
   if USE_PARTIAL_DATA:
