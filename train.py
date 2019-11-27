@@ -75,11 +75,15 @@ if __name__ == '__main__':
     full_model = args[3]
 
     if full_model == 'full':
-      USE_PARTIAL_DATA = False
-      model = ConvolutionalModel(num_classes=NUM_CLASSES,
-                                 activation=activation,
-                                 batch_norm=USE_BATCH_NORM,
-                                 verbose=VERBOSE)
+      # USE_PARTIAL_DATA = False
+      model = FitNet4(num_classes=NUM_CLASSES,
+                      activation=activation,
+                      batch_norm=USE_BATCH_NORM,
+                      verbose=VERBOSE)
+      # model = ConvolutionalModel(num_classes=NUM_CLASSES,
+      #                            activation=activation,
+      #                            batch_norm=USE_BATCH_NORM,
+      #                            verbose=VERBOSE)
     else:
       full_model = 'partial'
       model = InceptionLayerV2(num_classes=NUM_CLASSES,
@@ -115,6 +119,9 @@ if __name__ == '__main__':
     print('Training on %d examples; validating on %d examples' % (TRAIN_LIM, TEST_LIM))
     x_train, y_train = x_train[:TRAIN_LIM], y_train[:TRAIN_LIM]
     x_test, y_test = x_test[:TEST_LIM], y_test[:TEST_LIM]
+  else:
+    print('Training on %d examples; validating on %d examples' % (x_train.shape[0],
+                                                                  x_test.shape[0]))
 
   # tensorboard callback
   path = os.path.dirname(os.path.abspath(__file__))
@@ -127,7 +134,16 @@ if __name__ == '__main__':
                                                         histogram_freq=1,
                                                         update_freq='batch')
   loss_function = tf.keras.losses.SparseCategoricalCrossentropy()
-  optimizer = tf.keras.optimizers.Adam()
+
+  initial_learning_rate = 0.01
+  lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate=initial_learning_rate,
+    decay_steps=x_train.shape[0]*20,  # every 20 epochs
+    decay_rate=0.96,
+    staircase=True)
+
+  optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+  # optimizer = tf.keras.optimizers.Adam(learning_rate=0.005)
   metric = tf.keras.metrics.SparseCategoricalAccuracy()
 
   model.compile(optimizer=optimizer, loss=loss_function, metrics=[metric])

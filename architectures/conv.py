@@ -46,6 +46,138 @@ class BatchHistory(tf.keras.callbacks.Callback):
         self.batch_logs[k].append(logs[k])
 
 
+class FitNet4Block(Model):
+  def __init__(self, **kwargs):
+    super(FitNet4Block, self).__init__()
+
+    self.batch_norm = kwargs.get('batch_norm', False)
+    activation = kwargs.get('activation', ReLU)
+    verbose = kwargs.get('verbose', False)
+
+    # convolution filter sizes
+    conv1_filters = kwargs.get('conv1_filters', 64)
+    conv2_filters = kwargs.get('conv2_filters', 64)
+    conv3_filters = kwargs.get('conv3_filters', 64)
+    conv4_filters = kwargs.get('conv4_filters', 92)
+    conv5_filters = kwargs.get('conv5_filters', 92)
+    pool_size = kwargs.get('pool_size', (2, 2))
+
+    self.conv1 = Conv2D(filters=conv1_filters, kernel_size=(3, 3), padding='same')
+    self.act1 = activation()
+
+    self.conv2 = Conv2D(filters=conv2_filters, kernel_size=(3, 3), padding='same')
+    self.act2 = activation()
+
+    self.conv3 = Conv2D(filters=conv3_filters, kernel_size=(3, 3), padding='same')
+    self.act3 = activation()
+
+    self.conv4 = Conv2D(filters=conv4_filters, kernel_size=(3, 3), padding='same')
+    self.act4 = activation()
+
+    self.conv5 = Conv2D(filters=conv5_filters, kernel_size=(3, 3), padding='same')
+    self.act5 = activation()
+
+    self.pool = MaxPooling2D(pool_size=pool_size, padding='same')
+
+    if self.batch_norm:
+      self.bn1 = BatchNormalization()
+      self.bn2 = BatchNormalization()
+      self.bn3 = BatchNormalization()
+      self.bn4 = BatchNormalization()
+      self.bn5 = BatchNormalization()
+
+  def call(self, x, training=False):
+
+    x = self.conv1(x)
+    if self.batch_norm:
+      x = self.bn1(x, training=training)
+    x = self.act1(x)
+
+    x = self.conv2(x)
+    if self.batch_norm:
+      x = self.bn2(x, training=training)
+    x = self.act2(x)
+
+    x = self.conv3(x)
+    if self.batch_norm:
+      x = self.bn3(x, training=training)
+    x = self.act3(x)
+
+    x = self.conv4(x)
+    if self.batch_norm:
+      x = self.bn4(x, training=training)
+    x = self.act4(x)
+
+    x = self.conv5(x)
+    if self.batch_norm:
+      x = self.bn5(x, training=training)
+    x = self.act5(x)
+
+    out = self.pool(x)
+    return out
+
+
+class FitNet4(Model):
+  def __init__(self, **kwargs):
+    super(FitNet4, self).__init__()
+
+    print('---------------- FitNet-4 ----------------')
+
+    initializer = tf.keras.initializers.VarianceScaling(scale=2.0)
+    self.batch_norm = kwargs.get('batch_norm', False)
+    num_classes = kwargs.get('num_classes', 100)
+    activation = kwargs.get('activation', ReLU)
+    verbose = kwargs.get('verbose', False)
+
+    # fit2_params = {'conv1_filters': 80,
+    #                'conv2_filters': 80,
+    #                'conv3_filters': 80,
+    #                'conv4_filters': 80,
+    #                'conv5_filters': 80,
+    #                }
+
+    fit2_params = {'conv1_filters': 128,
+                   'conv2_filters': 128,
+                   'conv3_filters': 128,
+                   'conv4_filters': 192,
+                   'conv5_filters': 192,
+                   # 'pool_size': (8, 8),
+                   }
+
+    fit3_params = {'conv1_filters': 256,
+                   'conv2_filters': 256,
+                   'conv3_filters': 256,
+                   'conv4_filters': 320,
+                   'conv5_filters': 320,
+                   'pool_size': (8, 8),
+                   }
+
+    self.fit1 = FitNet4Block()
+    self.fit2 = FitNet4Block(**fit2_params)
+    self.fit3 = FitNet4Block(**fit3_params)
+    self.flat = Flatten()
+    self.fc1 = Dense(500)
+    self.act1 = activation()
+    self.out = Dense(num_classes, activation='softmax', kernel_initializer=initializer)
+
+    if self.batch_norm:
+      self.bn1 = BatchNormalization()
+
+  def call(self, x, training=False):
+    print('training: ', str(training))
+    x = self.fit1(x, training=training)
+    x = self.fit2(x, training=training)
+    x = self.fit3(x, training=training)
+    x = self.flat(x)
+    x = self.fc1(x)
+    if self.batch_norm:
+      x = self.bn1(x, training=training)
+    x = self.act1(x)
+    out = self.out(x)
+
+    return out
+
+
 class InceptionModule(Model):
   def __init__(self, **kwargs):
     super(InceptionModule, self).__init__()
