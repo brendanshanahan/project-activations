@@ -127,36 +127,51 @@ class FitNet4(Model):
     self.batch_norm = kwargs.get('batch_norm', False)
     num_classes = kwargs.get('num_classes', 100)
     activation = kwargs.get('activation', ReLU)
+    dropout_rate = kwargs.get('dropout_rate', 0.65)
     verbose = kwargs.get('verbose', False)
 
-    # fit2_params = {'conv1_filters': 80,
-    #                'conv2_filters': 80,
-    #                'conv3_filters': 80,
-    #                'conv4_filters': 80,
-    #                'conv5_filters': 80,
-    #                }
-
-    fit2_params = {'conv1_filters': 128,
-                   'conv2_filters': 128,
-                   'conv3_filters': 128,
-                   'conv4_filters': 192,
-                   'conv5_filters': 192,
-                   # 'pool_size': (8, 8),
+    fit1_params = {'conv1_filters': 64,
+                   'conv2_filters': 64,
+                   'conv3_filters': 92,
+                   'conv4_filters': 92,
+                   'conv5_filters': 92,
                    }
 
-    fit3_params = {'conv1_filters': 256,
-                   'conv2_filters': 256,
+    fit2_params = {'conv1_filters': 92,
+                   'conv2_filters': 92,
+                   'conv3_filters': 128,
+                   'conv4_filters': 128,
+                   'conv5_filters': 128,
+                   # 'pool_size': (4, 4),
+                   }
+
+    fit3_params = {'conv1_filters': 128,
+                   'conv2_filters': 128,
                    'conv3_filters': 256,
-                   'conv4_filters': 320,
-                   'conv5_filters': 320,
+                   'conv4_filters': 256,
+                   'conv5_filters': 256,
+                   # 'pool_size': (4, 4),
+                   }
+    
+    fit4_params = {'conv1_filters': 256,
+                   'conv2_filters': 256,
+                   'conv3_filters': 384,
+                   'conv4_filters': 384,
+                   'conv5_filters': 384,
                    'pool_size': (8, 8),
                    }
 
-    self.fit1 = FitNet4Block()
+
+    self.fit1 = FitNet4Block(**fit1_params)
+    self.drop1 = Dropout(rate=dropout_rate)
     self.fit2 = FitNet4Block(**fit2_params)
+    self.drop2 = Dropout(rate=dropout_rate)
     self.fit3 = FitNet4Block(**fit3_params)
+    self.drop3 = Dropout(rate=dropout_rate)
+    self.fit4 = FitNet4Block(**fit4_params)
+    # self.drop4 = Dropout(rate=dropout_rate)
     self.flat = Flatten()
-    self.fc1 = Dense(500)
+    self.fc1 = Dense(1000, kernel_initializer=initializer)
     self.act1 = activation()
     self.out = Dense(num_classes, activation='softmax', kernel_initializer=initializer)
 
@@ -166,8 +181,13 @@ class FitNet4(Model):
   def call(self, x, training=False):
     print('training: ', str(training))
     x = self.fit1(x, training=training)
+    x = self.drop1(x, training=training)
     x = self.fit2(x, training=training)
+    x = self.drop2(x, training=training)
     x = self.fit3(x, training=training)
+    x = self.drop3(x, training=training)
+    x = self.fit4(x, training=training)
+    # x = self.drop4(x, training=training)
     x = self.flat(x)
     x = self.fc1(x)
     if self.batch_norm:

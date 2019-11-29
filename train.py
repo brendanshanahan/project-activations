@@ -22,11 +22,12 @@ PARAMS = {'tower0_conv1': 192,
           'name': 'incepv2',
           'verbose': VERBOSE
           }
-BATCH_SIZE = 64
+BATCH_SIZE = 1024
 NUM_EPOCHS = 1
 USE_BATCH_NORM = False
 NUM_CLASSES = 10
-
+LEARNING_RATE = 0.001
+DROPOUT_RATE = 0.5
 
 if __name__ == '__main__':
   args = sys.argv[1:]
@@ -75,11 +76,13 @@ if __name__ == '__main__':
     full_model = args[3]
 
     if full_model == 'full':
-      # USE_PARTIAL_DATA = False
+      USE_PARTIAL_DATA = False
       model = FitNet4(num_classes=NUM_CLASSES,
                       activation=activation,
                       batch_norm=USE_BATCH_NORM,
-                      verbose=VERBOSE)
+                      verbose=VERBOSE,
+		      dropout_rate=DROPOUT_RATE,
+		     )
       # model = ConvolutionalModel(num_classes=NUM_CLASSES,
       #                            activation=activation,
       #                            batch_norm=USE_BATCH_NORM,
@@ -106,8 +109,9 @@ if __name__ == '__main__':
   #
   if VERBOSE:
     print('-------------------------------------------')
-    print('Dataset: ', dataset)
+    print('Dataset: ', dataset, '; batch size: ', BATCH_SIZE)
     print('Num classes: ', NUM_CLASSES)
+    print('learning rate: ', LEARNING_RATE, '; dropout rate: ', DROPOUT_RATE)
     print('Using activation function: ', activation_str)
     print('Use batch norm: ', str(USE_BATCH_NORM))
     print('Training %s model for %d epochs' % (full_model, NUM_EPOCHS))
@@ -124,26 +128,27 @@ if __name__ == '__main__':
                                                                   x_test.shape[0]))
 
   # tensorboard callback
-  path = os.path.dirname(os.path.abspath(__file__))
+  dir_path = os.path.dirname(os.path.abspath(__file__))
   run_time = time.strftime('%d%m%Y-%H:%M:%S')
-  log_dir = path + '/.logs/' + dataset + '-' + run_time
+  log_dir = dir_path + '/.logs/' + dataset + '-' + activation_str + '-' + run_time + '-' + batch_norm
   print('Tensorboard log directory: ', log_dir)
 
-  batch_callback = BatchHistory()
+  # batch_callback = BatchHistory()
+  lr_callback = tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5)
   tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
                                                         histogram_freq=1,
                                                         update_freq='batch')
   loss_function = tf.keras.losses.SparseCategoricalCrossentropy()
 
-  initial_learning_rate = 0.01
-  lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=initial_learning_rate,
-    decay_steps=x_train.shape[0]*20,  # every 20 epochs
-    decay_rate=0.96,
-    staircase=True)
+  # initial_learning_rate = LEARNING_RATE
+  # lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+  #   initial_learning_rate=initial_learning_rate,
+  #   decay_steps=5000,  # every 5 epochs
+  #   decay_rate=0.96,
+  #   staircase=False)
 
-  optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
-  # optimizer = tf.keras.optimizers.Adam(learning_rate=0.005)
+  # optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+  optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
   metric = tf.keras.metrics.SparseCategoricalAccuracy()
 
   model.compile(optimizer=optimizer, loss=loss_function, metrics=[metric])
@@ -153,7 +158,7 @@ if __name__ == '__main__':
                       batch_size=BATCH_SIZE,
                       epochs=NUM_EPOCHS,
                       validation_data=(x_test, y_test),
-                      callbacks=[tensorboard_callback]
+                      callbacks=[tensorboard_callback, lr_callback]
                       # callbacks=[batch_callback, tensorboard_callback]
                       )
 
@@ -167,12 +172,22 @@ if __name__ == '__main__':
   print('elapsed time: %dh, %dm, %ds' % (elapsed_hrs, elapsed_min, elapsed_sec))
   print('--------------- history ---------------')
   print(history.history)
-  print('------------ batch history ------------')
-  print(history)
+  # print('------------ batch history ------------')
+  # print(history)
 
-  filename = path + '/.results/' + dataset + '-' + activation_str \
-             + '-' + run_time + '-' + full_model + '-' + batch_norm \
-             + '-' + str(NUM_EPOCHS) + '-epochs' + '.pickle'
-  print('Saving training resluts to: ', filename)
+  filename = dir_path + '/.results/' + activation_str + '.pickle'
+  if os.path.exists(filename):
+    with open(filename, 'rb') as f:
+      all_data = pickle.load(f)
+    all_data[run_time] = (history.history, run_time)
+  else:
+    all_data = {run_time: (history.history, run_time)}
   with open(filename, 'wb') as f:
-    pickle.dump(history.history, f, pickle.HIGHEST_PROTOCOL)
+    pickle.dump(all_data, f, pickle.HIGHEST_PROTOCOL)
+
+  #filename = path + '/.results/' + dataset + '-' + activation_str \
+  #           + '-' + run_time + '-' + full_model + '-' + batch_norm \
+  #           + '-' + str(NUM_EPOCHS) + '-epochs' + '.pickle'
+  #print('Saving training resluts to: ', filename)
+  #with open(filename, 'wb') as f:
+  #  pickle.dump(history.history, f, pickle.HIGHEST_PROTOCOL)
