@@ -1,13 +1,20 @@
 from architectures.conv import *
 from architectures.fully_connected_models import *
 from tensorflow.keras.layers import ReLU
+import matplotlib.pyplot as plt
 import os
 import sys
-import tensorflow as tf
+
 
 USE_PARTIAL_DATA = True
-TRAIN_LIM = 5000
-TEST_LIM = 500
+TRAIN_LIM = 2000
+TEST_LIM = 200
+BATCH_SIZE = 128
+NUM_EPOCHS = 1
+USE_BATCH_NORM = False
+NUM_CLASSES = 10
+LEARNING_RATE = 0.0001
+DROPOUT_RATE = 0.1
 VERBOSE = True
 PARAMS = {'tower0_conv1': 192,
           'tower1_conv1': 128,
@@ -22,12 +29,6 @@ PARAMS = {'tower0_conv1': 192,
           'name': 'incepv2',
           'verbose': VERBOSE
           }
-BATCH_SIZE = 1024
-NUM_EPOCHS = 1
-USE_BATCH_NORM = False
-NUM_CLASSES = 10
-LEARNING_RATE = 0.001
-DROPOUT_RATE = 0.5
 
 if __name__ == '__main__':
   args = sys.argv[1:]
@@ -81,12 +82,8 @@ if __name__ == '__main__':
                       activation=activation,
                       batch_norm=USE_BATCH_NORM,
                       verbose=VERBOSE,
-		      dropout_rate=DROPOUT_RATE,
-		     )
-      # model = ConvolutionalModel(num_classes=NUM_CLASSES,
-      #                            activation=activation,
-      #                            batch_norm=USE_BATCH_NORM,
-      #                            verbose=VERBOSE)
+                      dropout_rate=DROPOUT_RATE,
+                      )
     else:
       full_model = 'partial'
       model = InceptionLayerV2(num_classes=NUM_CLASSES,
@@ -106,7 +103,6 @@ if __name__ == '__main__':
   except IndexError:
     pass
 
-  #
   if VERBOSE:
     print('-------------------------------------------')
     print('Dataset: ', dataset, '; batch size: ', BATCH_SIZE)
@@ -133,22 +129,12 @@ if __name__ == '__main__':
   log_dir = dir_path + '/.logs/' + dataset + '-' + activation_str + '-' + run_time + '-' + batch_norm
   print('Tensorboard log directory: ', log_dir)
 
-  # batch_callback = BatchHistory()
   lr_callback = tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5)
   tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
                                                         histogram_freq=1,
                                                         update_freq='batch')
   loss_function = tf.keras.losses.SparseCategoricalCrossentropy()
-
-  # initial_learning_rate = LEARNING_RATE
-  # lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-  #   initial_learning_rate=initial_learning_rate,
-  #   decay_steps=5000,  # every 5 epochs
-  #   decay_rate=0.96,
-  #   staircase=False)
-
-  # optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
-  optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+  optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
   metric = tf.keras.metrics.SparseCategoricalAccuracy()
 
   model.compile(optimizer=optimizer, loss=loss_function, metrics=[metric])
@@ -159,7 +145,6 @@ if __name__ == '__main__':
                       epochs=NUM_EPOCHS,
                       validation_data=(x_test, y_test),
                       callbacks=[tensorboard_callback, lr_callback]
-                      # callbacks=[batch_callback, tensorboard_callback]
                       )
 
   elapsed_time = time.time() - start_time
@@ -170,10 +155,14 @@ if __name__ == '__main__':
   print(model.summary())
   print('---------------------------------------')
   print('elapsed time: %dh, %dm, %ds' % (elapsed_hrs, elapsed_min, elapsed_sec))
-  print('--------------- history ---------------')
   print(history.history)
-  # print('------------ batch history ------------')
-  # print(history)
+
+  fig, ax = plt.subplots(2, 1, figsize=(6, 7))
+  ax[0].plot(history.history['val_sparse_categorical_accuracy'])
+  ax[0].set_ylabel('Validation Accuracy')
+  ax[1].plot(history.history['val_loss'])
+  ax[1].set_ylabel('Validation Loss')
+  plt.show()
 
   filename = dir_path + '/.results/' + activation_str + '.pickle'
   if os.path.exists(filename):
@@ -184,10 +173,3 @@ if __name__ == '__main__':
     all_data = {run_time: (history.history, run_time)}
   with open(filename, 'wb') as f:
     pickle.dump(all_data, f, pickle.HIGHEST_PROTOCOL)
-
-  #filename = path + '/.results/' + dataset + '-' + activation_str \
-  #           + '-' + run_time + '-' + full_model + '-' + batch_norm \
-  #           + '-' + str(NUM_EPOCHS) + '-epochs' + '.pickle'
-  #print('Saving training resluts to: ', filename)
-  #with open(filename, 'wb') as f:
-  #  pickle.dump(history.history, f, pickle.HIGHEST_PROTOCOL)

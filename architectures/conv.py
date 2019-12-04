@@ -142,7 +142,6 @@ class FitNet4(Model):
                    'conv3_filters': 128,
                    'conv4_filters': 128,
                    'conv5_filters': 128,
-                   # 'pool_size': (4, 4),
                    }
 
     fit3_params = {'conv1_filters': 128,
@@ -150,7 +149,6 @@ class FitNet4(Model):
                    'conv3_filters': 256,
                    'conv4_filters': 256,
                    'conv5_filters': 256,
-                   # 'pool_size': (4, 4),
                    }
     
     fit4_params = {'conv1_filters': 256,
@@ -169,7 +167,6 @@ class FitNet4(Model):
     self.fit3 = FitNet4Block(**fit3_params)
     self.drop3 = Dropout(rate=dropout_rate)
     self.fit4 = FitNet4Block(**fit4_params)
-    # self.drop4 = Dropout(rate=dropout_rate)
     self.flat = Flatten()
     self.fc1 = Dense(1000, kernel_initializer=initializer)
     self.act1 = activation()
@@ -187,7 +184,6 @@ class FitNet4(Model):
     x = self.fit3(x, training=training)
     x = self.drop3(x, training=training)
     x = self.fit4(x, training=training)
-    # x = self.drop4(x, training=training)
     x = self.flat(x)
     x = self.fc1(x)
     if self.batch_norm:

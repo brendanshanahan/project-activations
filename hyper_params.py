@@ -1,47 +1,7 @@
-import tensorflow as tf
 import sys
 from os import path
-from tensorboard.plugins.hparams import api as hp
 from architectures.fully_connected_models import *
 import pickle
-import math
-
-
-class BatchLogger(tf.keras.callbacks.TensorBoard):
-  """
-  log batch statistics to tensorboard in the middle of an epoch, rather
-  than only at the end
-  """
-  def __init__(self, log_every=1, **kwargs):
-    super(BatchLogger, self).__init__(**kwargs)
-    self.log_every = log_every
-    self.counter = 0
-
-  def on_batch_end(self, batch, logs=None):
-    self.counter += 1
-    if self.counter % self.log_every == 0:
-      for name, value in logs.items():
-        if name in ['batch', 'size']:
-          continue
-        summary = tf.Summary()
-        summary_value = summary.value.add()
-        summary_value.simple_value = value.item()
-        summary_value.tag = name
-        self.writer.add_summary(summary, self.counter)
-      self.writer.flush()
-
-    super().on_batch_end(batch, logs)
-
-  def on_epoch_end(self, epoch, logs=None):
-    for name, value in logs.items():
-      if (name in ['batch', 'size']) or ('val' not in name):
-        continue
-      summary = tf.Summary()
-      summary_value = summary.value.add()
-      summary_value.simple_value = value.item()
-      summary_value.tag = name
-      self.writer.add_summary(summary, epoch)
-    self.writer.flush()
 
 
 if __name__ == "__main__":
@@ -112,27 +72,11 @@ if __name__ == "__main__":
                       callbacks=[callback]
                       )
 
-  # epoch_batch = math.ceil(x_train.shape[0] / 4)
-  # steps_per_epoch = math.ceil(epoch_batch / batch_size)
-  #
-  # print('steps per epoch: ', steps_per_epoch)
-  # print('epoch batch size: ', epoch_batch)
-  #
-  # history = model.fit(x_train, y_train,
-  #                     batch_size=batch_size,
-  #                     epochs=num_epochs*4,
-  #                     steps_per_epoch=steps_per_epoch,
-  #                     validation_data=(x_test, y_test),
-  #                     callbacks=[callback]
-  #                     )
-  #
-  # print('training history: ', history.history)
-  #
-  # if path.exists('final-runs.pickle'):
-  #   with open('final-runs.pickle', 'rb') as f:
-  #     all_runs = pickle.load(f)
-  #   all_runs[run_name] = history.history
-  # else:
-  #   all_runs = {run_name: history.history}
-  # with open('final-runs.pickle', 'wb') as f:
-  #   pickle.dump(all_runs, f, pickle.HIGHEST_PROTOCOL)
+  if path.exists('results/cifar10-all-trials.pickle'):
+    with open('results/cifar10-all-trials.pickle', 'rb') as f:
+      all_runs = pickle.load(f)
+    all_runs[run_name] = history.history
+  else:
+    all_runs = {run_name: history.history}
+  with open('results/cifar10-all-trials.pickle', 'wb') as f:
+    pickle.dump(all_runs, f, pickle.HIGHEST_PROTOCOL)
